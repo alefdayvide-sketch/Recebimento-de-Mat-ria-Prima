@@ -60,10 +60,9 @@ export default function App() {
   return (
     <TemaContext.Provider value={TEMAS[role]}>
       <ToastProvider>
-        <div className="min-h-screen bg-zinc-950 text-zinc-200">
+        <div className="min-h-screen bg-white font-sans text-ink">
           <Sidebar
             role={role}
-            setRole={setRole}
             view={view}
             setView={(v) => abrir(v)}
             romaneios={store.romaneios}
@@ -71,9 +70,9 @@ export default function App() {
             onClose={() => setMenuOpen(false)}
             onReset={store.restaurarDemo}
           />
-          <div className="lg:pl-72">
-            <Header role={role} romaneios={store.romaneios} onMenu={() => setMenuOpen(true)} abrir={(v) => abrir(v)} />
-            <main key={`${role}-${view}-${selectedId ?? ""}`} className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:py-8">
+          <div className="lg:pl-24">
+            <Header role={role} setRole={setRole} romaneios={store.romaneios} onMenu={() => setMenuOpen(true)} abrir={(v) => abrir(v)} />
+            <main key={`${role}-${view}-${selectedId ?? ""}`} className="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 lg:py-8">
               {telas[view]}
             </main>
           </div>

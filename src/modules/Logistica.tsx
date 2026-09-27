@@ -1,8 +1,9 @@
 import {
   AlertOctagon,
-  ArrowRight,
   CheckCircle2,
   ClipboardList,
+  FileSpreadsheet,
+  GitFork,
   Copy,
   Lock,
   Plus,
@@ -14,7 +15,8 @@ import {
   Truck,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Badge, Button, Card, cx, EmptyState, Field, inputCls, Modal, numCls, PageHeader, StatusBadge, Tabs, useToast } from '../components/ui';
+import { ART, ContainerArt, TruckArt } from '../components/Art';
+import { ActionButton, Badge, Button, Card, cx, EmptyState, Field, inputCls, Modal, numCls, PageHeader, QueueItem, selectSmCls, StatusBadge, Steps, Tabs, useToast } from '../components/ui';
 import { analisarFardo, exigeQualidade, LIMITE_SEVERIDADE, uid } from '../lib/calc';
 import { agoraISO, fmtData, fmtNum, fmtPct } from '../lib/format';
 import type { FardoRecebido, Romaneio } from '../types';
@@ -50,85 +52,72 @@ export function Logistica({ store, nav }: ModuleProps) {
 
   return (
     <div>
-      <PageHeader title="Logística · Fichas Cegas & Pátio" subtitle="Conferência física às cegas das cargas recebidas no pátio." />
+      <PageHeader eyebrow="Logística" title="Fichas cegas & pátio" subtitle="Conferência física às cegas das cargas que chegam ao pátio." />
 
-      <div className="mb-6 grid gap-2 rounded-xl border border-teal-500/30 bg-teal-500/5 p-4 sm:grid-cols-3">
-        {[
-          ['1', 'Aguardando Caminhão', 'Romaneio emitido pelo Admin. Imprima a folha cega para a prancheta.'],
-          ['2', 'Conferência no pátio', 'Conte os fardos, colete amostras e meça as variações em mm.'],
-          ['3', 'Roteamento automático', `Qualquer fardo ≥ ${LIMITE_SEVERIDADE}% → Qualidade. Todos < ${LIMITE_SEVERIDADE}% → Admin.`],
-        ].map(([n, t, d], i) => (
-          <div key={n} className="flex items-start gap-3">
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-teal-600 text-xs font-bold text-white">{n}</span>
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-teal-100">{t}</div>
-              <div className="text-xs text-zinc-400">{d}</div>
-            </div>
-            {i < 2 && <ArrowRight size={16} className="mt-1.5 hidden text-teal-500/60 sm:block" />}
-          </div>
-        ))}
+      <div className="mb-6">
+        <Steps
+          tone="teal"
+          items={[
+            { icon: <FileSpreadsheet size={19} />, title: 'Romaneio emitido', text: 'O Admin cadastra a carga. Imprima a folha cega para a prancheta.' },
+            { icon: <ClipboardList size={19} />, title: 'Conferência no pátio', text: 'Conte os fardos, colete amostras e meça as variações em mm.' },
+            { icon: <GitFork size={19} />, title: 'Roteamento automático', text: `Algum fardo ≥ ${LIMITE_SEVERIDADE}% vai para a Qualidade. Todos abaixo vão ao Admin.` },
+          ]}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
-        <Card className="h-fit">
-          <div className="space-y-3 border-b border-zinc-800 p-4">
-            <Tabs
-              value={aba}
-              onChange={(v) => {
-                setAba(v);
-                setSelId(undefined);
-              }}
-              options={[
-                { value: 'aguardando', label: `Aguardando Caminhão (${store.romaneios.filter((r) => !foiEnviada(r)).length})` },
-                { value: 'enviadas', label: `Enviadas (${store.romaneios.filter(foiEnviada).length})` },
-              ]}
-            />
-            {aba === 'enviadas' && (
-              <div className="flex flex-wrap gap-1">
-                {(
-                  [
-                    ['todas', 'Todas'],
-                    ['qualidade', 'Na Qualidade'],
-                    ['admin', 'No Admin'],
-                    ['finalizadas', 'Finalizadas'],
-                  ] as const
-                ).map(([k, l]) => (
-                  <button
-                    key={k}
-                    onClick={() => setSub(k)}
-                    className={cx('rounded-full border px-2.5 py-1 text-[11px] font-medium', sub === k ? 'border-teal-500/60 bg-teal-500/15 text-teal-200' : 'border-zinc-800 text-zinc-400 hover:text-zinc-200')}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-              <input className={cx(inputCls, 'pl-8 text-xs')} placeholder="Buscar NF, fornecedor, container…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <div className="flex h-fit flex-col gap-3 rounded-3xl bg-canvas p-3">
+          <Tabs
+            value={aba}
+            onChange={(v) => {
+              setAba(v);
+              setSelId(undefined);
+            }}
+            options={[
+              { value: 'aguardando', label: `Aguardando caminhão · ${store.romaneios.filter((r) => !foiEnviada(r)).length}` },
+              { value: 'enviadas', label: `Enviadas · ${store.romaneios.filter(foiEnviada).length}` },
+            ]}
+          />
+          {aba === 'enviadas' && (
+            <div className="flex flex-wrap gap-1">
+              {(
+                [
+                  ['todas', 'Todas'],
+                  ['qualidade', 'Na Qualidade'],
+                  ['admin', 'No Admin'],
+                  ['finalizadas', 'Finalizadas'],
+                ] as const
+              ).map(([k, l]) => (
+                <button
+                  key={k}
+                  onClick={() => setSub(k)}
+                  className={cx('rounded-full px-3 py-1.5 text-xs font-bold', sub === k ? 'bg-teal-700 text-white' : 'bg-white text-muted hover:text-ink')}
+                >
+                  {l}
+                </button>
+              ))}
             </div>
+          )}
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <input className={cx(inputCls, 'pl-9')} placeholder="Buscar NF, fornecedor, container" value={busca} onChange={(e) => setBusca(e.target.value)} />
           </div>
-          <div className="max-h-[640px] divide-y divide-zinc-800/70 overflow-y-auto">
+          <div className="flex max-h-[640px] flex-col gap-1 overflow-y-auto">
             {fila.length === 0 && <EmptyState icon={<Truck size={20} />} title={aba === 'aguardando' ? 'Nenhum caminhão aguardando' : 'Nenhuma ficha enviada'} />}
             {fila.map((r) => (
-              <button
+              <QueueItem
                 key={r.id}
+                active={sel?.id === r.id}
+                tone={foiEnviada(r) ? (r.status === 'Ag. Qualidade' ? 'rose' : r.status === 'Ag. Aprovação Admin' ? 'amber' : 'emerald') : 'teal'}
+                art={foiEnviada(r) ? <ContainerArt p={r.status === 'Ag. Qualidade' ? ART.rose : r.status === 'Ag. Aprovação Admin' ? ART.amber : ART.emerald} width={40} /> : <Truck size={22} />}
+                title={r.fornecedor}
+                aside={foiEnviada(r) ? <StatusBadge status={r.status} /> : undefined}
+                lines={[`NF ${r.nf} · ${r.codigoContainer || 'Carga solta'}`, foiEnviada(r) ? `Enviada ${fmtData(r.dataEnvioLogistica)}` : `Previsto ${fmtData(r.dataPrevista)}`]}
                 onClick={() => setSelId(r.id)}
-                className={cx('block w-full border-l-2 px-4 py-3 text-left transition', sel?.id === r.id ? 'border-l-teal-400 bg-teal-500/10' : 'border-l-transparent hover:bg-zinc-800/40')}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold text-zinc-100">{r.fornecedor}</span>
-                  <StatusBadge status={r.status} />
-                </div>
-                <div className="mt-1 flex items-center justify-between font-mono text-[11px] text-zinc-500">
-                  <span>NF {r.nf}</span>
-                  <span>{r.codigoContainer || 'sem container'}</span>
-                </div>
-                <div className="mt-0.5 text-[11px] text-zinc-500">{foiEnviada(r) ? `Enviada ${fmtData(r.dataEnvioLogistica)}` : `Previsto ${fmtData(r.dataPrevista)} · ${r.local}`}</div>
-              </button>
+              />
             ))}
           </div>
-        </Card>
+        </div>
 
         {sel ? (
           <FichaCegaWorkspace key={sel.id} romaneio={sel} store={store} onEnviada={() => setSelId(undefined)} />
@@ -203,33 +192,37 @@ function FichaCegaWorkspace({ romaneio, store, onEnviada }: { romaneio: Romaneio
 
   return (
     <div className="space-y-4">
-      <Card>
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-800 px-5 py-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-zinc-50">Ficha Cega</h2>
-              <StatusBadge status={romaneio.status} />
-            </div>
-            <div className="font-mono text-xs text-zinc-500">{romaneio.id}</div>
+      <Card className="overflow-hidden">
+        <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-stretch">
+          <div className="flex shrink-0 items-end justify-center rounded-2xl px-4 pt-6 lg:w-[300px]" style={{ background: ART.teal.bg }}>
+            <TruckArt p={ART.teal} code={romaneio.codigoContainer && romaneio.codigoContainer !== 'Carga solta' ? romaneio.codigoContainer : undefined} width={270} />
           </div>
-          <Button variant="outline" onClick={() => setFolhaOpen(true)}>
-            <Printer size={15} /> Imprimir Folha Cega
-          </Button>
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="font-display text-2xl font-bold text-ink">{romaneio.fornecedor}</h2>
+                  <StatusBadge status={romaneio.status} />
+                </div>
+                <div className="font-mono text-xs text-muted">Ficha cega · {romaneio.id}</div>
+              </div>
+              <ActionButton tone="light" icon={<Printer size={19} />} title="Folha cega" subtitle="Imprimir prancheta" onClick={() => setFolhaOpen(true)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+              <Meta label="Nota fiscal" value={romaneio.nf} mono />
+              <Meta label="Madeira" value={romaneio.tipoMadeira} />
+              <Meta label="Local" value={romaneio.local} />
+              <div className="rounded-xl bg-teal-50 px-3 py-2.5">
+                <div className="flex items-center gap-1 text-[11px] font-bold text-teal-800">
+                  <Lock size={11} /> Container (do romaneio)
+                </div>
+                <div className="truncate font-mono text-sm font-medium text-teal-900">{romaneio.codigoContainer || 'Não informado'}</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="grid gap-4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Meta label="Fornecedor" value={romaneio.fornecedor} />
-          <Meta label="Nota Fiscal" value={romaneio.nf} mono />
-          <Meta label="Tipo de madeira" value={romaneio.tipoMadeira} />
-          <div className="rounded-lg border border-teal-500/40 bg-teal-500/10 px-3 py-2">
-            <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-teal-300">
-              <Lock size={10} /> Container · origem romaneio
-            </div>
-            <div className="font-mono text-sm font-bold text-teal-50">{romaneio.codigoContainer || 'Não informado'}</div>
-          </div>
-        </div>
-
-        <div className="grid gap-4 border-t border-zinc-800 px-5 py-4 sm:grid-cols-2">
+        <div className="grid gap-4 border-t border-line px-5 py-4 sm:grid-cols-2">
           <Field label="Data de recebimento no pátio">
             <input type="datetime-local" disabled={!editavel} className={inputCls} value={dataChegada} onChange={(e) => setDataChegada(e.target.value)} />
           </Field>
@@ -242,11 +235,11 @@ function FichaCegaWorkspace({ romaneio, store, onEnviada }: { romaneio: Romaneio
       {fardos.length > 0 && (
         <div
           className={cx(
-            'flex items-start gap-3 rounded-xl border px-4 py-3 text-sm',
-            critico ? 'border-red-500/50 bg-red-500/10 text-red-100' : 'border-teal-500/40 bg-teal-500/10 text-teal-100',
+            'flex items-center gap-4 rounded-2xl px-4 py-3.5 text-sm',
+            critico ? 'bg-rose-50 text-rose-900' : 'bg-teal-50 text-teal-900',
           )}
         >
-          {critico ? <AlertOctagon size={18} className="mt-0.5 shrink-0 text-red-400" /> : <ShieldCheck size={18} className="mt-0.5 shrink-0 text-teal-300" />}
+          <span className={cx('grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white', critico ? 'bg-rose-700' : 'bg-teal-700')}>{critico ? <AlertOctagon size={20} /> : <ShieldCheck size={20} />}</span>
           <div>
             <div className="font-semibold">
               {editavel ? (critico ? 'Esta carga seguirá para a QUALIDADE' : 'Esta carga seguirá direto para o ADMINISTRADOR') : critico ? 'Carga retida para a Qualidade' : 'Carga enviada ao Administrador'}
@@ -261,10 +254,10 @@ function FichaCegaWorkspace({ romaneio, store, onEnviada }: { romaneio: Romaneio
       )}
 
       <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
           <div>
-            <h3 className="text-sm font-semibold text-zinc-100">Fardos físicos</h3>
-            <p className="text-xs text-zinc-500">
+            <h3 className="font-display text-[15px] font-bold text-ink">Fardos físicos</h3>
+            <p className="text-xs text-muted">
               {fardos.length} fardo(s) · {fmtNum(totalRecebido)} peças recebidas
             </p>
           </div>
@@ -277,7 +270,7 @@ function FichaCegaWorkspace({ romaneio, store, onEnviada }: { romaneio: Romaneio
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1100px] text-xs">
             <thead>
-              <tr className="border-b border-zinc-800 text-left text-[10px] uppercase tracking-wider text-zinc-500">
+              <tr className="border-b border-line bg-canvas/70 text-left text-[11px] font-bold uppercase tracking-wide text-muted">
                 <th className="px-3 py-2.5">Fardo #</th>
                 <th className="px-2 py-2.5">Produto nominal</th>
                 <th className="px-2 py-2.5 text-right">Qtd recebida</th>
@@ -291,10 +284,10 @@ function FichaCegaWorkspace({ romaneio, store, onEnviada }: { romaneio: Romaneio
                 {editavel && <th className="px-3 py-2.5" />}
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/70">
+            <tbody className="divide-y divide-line">
               {fardos.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-10 text-center text-zinc-500">
+                  <td colSpan={11} className="px-4 py-10 text-center text-muted">
                     Nenhum fardo conferido ainda. {editavel && 'Clique em “Adicionar fardo” para começar.'}
                   </td>
                 </tr>
@@ -302,12 +295,12 @@ function FichaCegaWorkspace({ romaneio, store, onEnviada }: { romaneio: Romaneio
               {fardos.map((f, idx) => {
                 const a = analises[idx];
                 return (
-                  <tr key={f.id} className={cx(a.critico && 'bg-red-500/5')}>
+                  <tr key={f.id} className={cx(a.critico && 'bg-rose-50/60')}>
                     <td className="px-3 py-2">
                       <input disabled={!editavel} className={cx(numCls, 'w-14 text-center')} value={f.numeroFardo} onChange={(e) => upd(f.id, { numeroFardo: e.target.value })} />
                     </td>
                     <td className="px-2 py-2">
-                      <select disabled={!editavel} className={cx(inputCls, 'py-1.5 text-xs')} value={f.produtoId} onChange={(e) => upd(f.id, { produtoId: e.target.value })}>
+                      <select disabled={!editavel} className={selectSmCls} value={f.produtoId} onChange={(e) => upd(f.id, { produtoId: e.target.value })}>
                         {romaneio.items.map((i) => (
                           <option key={i.id} value={i.id}>
                             {i.produto} · {i.espessura}×{i.largura}×{i.comprimento}
@@ -322,23 +315,23 @@ function FichaCegaWorkspace({ romaneio, store, onEnviada }: { romaneio: Romaneio
                     <NumCell v={f.v_largura} disabled={!editavel} signed onChange={(v) => upd(f.id, { v_largura: v })} />
                     <NumCell v={f.v_comprimento} disabled={!editavel} signed onChange={(v) => upd(f.id, { v_comprimento: v })} />
                     <td className="px-2 py-2 text-right font-mono">
-                      <div className={cx('font-bold', a.pctPecas >= LIMITE_SEVERIDADE ? 'text-red-400' : a.pctPecas > 0 ? 'text-amber-300' : 'text-zinc-400')}>{fmtPct(a.pctPecas)}</div>
-                      <div className={cx(a.pctM3 >= LIMITE_SEVERIDADE ? 'text-red-400' : a.pctM3 > 0 ? 'text-amber-300/80' : 'text-zinc-600')}>{fmtPct(a.pctM3)}</div>
+                      <div className={cx('font-bold', a.pctPecas >= LIMITE_SEVERIDADE ? 'text-rose-700' : a.pctPecas > 0 ? 'text-amber-700' : 'text-muted')}>{fmtPct(a.pctPecas)}</div>
+                      <div className={cx(a.pctM3 >= LIMITE_SEVERIDADE ? 'text-rose-700' : a.pctM3 > 0 ? 'text-amber-600' : 'text-slate-400')}>{fmtPct(a.pctM3)}</div>
                     </td>
                     <td className="px-2 py-2">
                       {a.critico ? (
-                        <Badge className="border-red-500/50 bg-red-500/15 text-red-300">Qualidade</Badge>
+                        <Badge className="bg-rose-700 text-white">Qualidade</Badge>
                       ) : (
-                        <Badge className="border-teal-500/40 bg-teal-500/10 text-teal-300">Admin</Badge>
+                        <Badge className="bg-teal-50 text-teal-800">Admin</Badge>
                       )}
                     </td>
                     {editavel && (
                       <td className="px-3 py-2">
                         <div className="flex justify-end gap-1">
-                          <button onClick={() => duplicar(f)} className="rounded p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200" title="Duplicar fardo">
+                          <button onClick={() => duplicar(f)} className="rounded p-1.5 text-muted hover:bg-canvas hover:text-ink" title="Duplicar fardo">
                             <Copy size={14} />
                           </button>
-                          <button onClick={() => setFardos((fs) => fs.filter((x) => x.id !== f.id))} className="rounded p-1.5 text-zinc-500 hover:bg-red-500/10 hover:text-red-400" title="Remover fardo">
+                          <button onClick={() => setFardos((fs) => fs.filter((x) => x.id !== f.id))} className="rounded p-1.5 text-muted hover:bg-red-500/10 hover:text-red-400" title="Remover fardo">
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -353,14 +346,18 @@ function FichaCegaWorkspace({ romaneio, store, onEnviada }: { romaneio: Romaneio
       </Card>
 
       {editavel ? (
-        <div className="flex justify-end">
+        <div className="sticky bottom-3 z-10 flex flex-col gap-3 rounded-2xl border border-line bg-white/95 p-3 pl-5 shadow-lift backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-[13px] text-ink-soft">
+            Ao finalizar, contagens, data e conferente são salvos. Destino:{' '}
+            <b className={critico ? 'text-rose-700' : 'text-teal-800'}>{fardos.length === 0 ? '—' : critico ? 'Qualidade' : 'Administrador'}</b>
+          </div>
           <Button size="lg" onClick={finalizar} className="w-full sm:w-auto">
-            <Send size={16} /> Finalizar Conferência e Enviar Ficha Cega
+            <Send size={17} /> Finalizar conferência e enviar ficha cega
           </Button>
         </div>
       ) : (
-        <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-xs text-zinc-400">
-          <CheckCircle2 size={15} className="text-emerald-400" />
+        <div className="flex items-center gap-2 rounded-2xl bg-canvas px-4 py-3 text-[13px] text-ink-soft">
+          <CheckCircle2 size={16} className="text-emerald-700" />
           Ficha enviada em {fmtData(romaneio.dataEnvioLogistica)} por {romaneio.conferenteLogistica || '—'}. Somente leitura.
         </div>
       )}
@@ -372,9 +369,9 @@ function FichaCegaWorkspace({ romaneio, store, onEnviada }: { romaneio: Romaneio
 
 function Meta({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
-      <div className={cx('text-sm font-semibold text-zinc-100', mono && 'font-mono')}>{value}</div>
+    <div className="rounded-xl bg-canvas px-3 py-2.5">
+      <div className="text-[11px] font-bold text-muted">{label}</div>
+      <div className={cx('truncate text-sm font-semibold text-ink', mono && 'font-mono font-medium')}>{value}</div>
     </div>
   );
 }
@@ -388,7 +385,7 @@ function NumCell({ v, onChange, disabled, signed, warn }: { v: number; onChange:
       <input
         disabled={disabled}
         inputMode="decimal"
-        className={cx(numCls, warn && 'border-red-500 text-red-300', signed && v > 0 && 'text-amber-300', signed && v < 0 && 'text-sky-300')}
+        className={cx(numCls, warn && 'ring-2 ring-red-300 text-red-700', signed && v > 0 && 'text-amber-700', signed && v < 0 && 'text-sky-700')}
         value={shown}
         onChange={(e) => {
           setTxt(e.target.value);
@@ -409,7 +406,8 @@ function FolhaCegaModal({ open, onClose, romaneio }: { open: boolean; onClose: (
       open={open}
       onClose={onClose}
       width="max-w-4xl"
-      title="Folha Cega · Prancheta de Pátio"
+      title="Folha cega · prancheta de pátio"
+      icon={<Printer size={22} />}
       subtitle="As quantidades nominais de peças e m³ NÃO aparecem nesta folha."
       footer={
         <>

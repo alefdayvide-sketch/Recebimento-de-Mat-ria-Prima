@@ -1,10 +1,17 @@
-import { FlaskConical, Microscope, Ruler, Send, Sigma } from 'lucide-react';
+import { Check, FlaskConical, Microscope, Ruler, Send, Sigma, TriangleAlert, X } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Button, Card, CardHeader, cx, EmptyState, Field, inputCls, numCls, PageHeader, StatusBadge, useToast } from '../components/ui';
-import { analisarFardo, LIMITE_SEVERIDADE } from '../lib/calc';
+import { ART, ContainerArt } from '../components/Art';
+import { Button, Card, CardHeader, cx, EmptyState, Field, inputCls, Meter, numCls, PageHeader, QueueItem, selectSmCls, StatusBadge, textareaCls, useToast } from '../components/ui';
+import { analisarFardo, LIMITE_SEVERIDADE, maiorSeveridade } from '../lib/calc';
 import { agoraISO, fmtData, fmtNum, fmtPct } from '../lib/format';
 import type { DecisaoLaudo, FardoRecebido, Romaneio } from '../types';
 import type { ModuleProps } from './shared';
+
+const DEC_FARDO: { value: FardoRecebido['status']; label: string; icon: ReactNode; on: string }[] = [
+  { value: 'Liberado', label: 'Liberar', icon: <Check size={13} strokeWidth={3} />, on: 'bg-emerald-700 text-white' },
+  { value: 'Divergente confirmado', label: 'Divergente', icon: <TriangleAlert size={13} />, on: 'bg-orange-600 text-white' },
+  { value: 'Reprovado', label: 'Reprovar', icon: <X size={13} strokeWidth={3} />, on: 'bg-red-700 text-white' },
+];
 
 const DECISOES: { value: DecisaoLaudo; label: string }[] = [
   { value: 'Liberado', label: 'Liberado' },
@@ -19,33 +26,31 @@ export function Qualidade({ store, nav }: ModuleProps) {
 
   return (
     <div>
-      <PageHeader title="Qualidade · Auditoria Técnica (≥20%)" subtitle="Perícia das cargas retidas pela Logística com fardos em severidade crítica." />
+      <PageHeader eyebrow="Qualidade" title="Auditoria técnica (≥ 20%)" subtitle="Perícia das cargas retidas pela Logística com fardos em severidade crítica." />
       <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
-        <Card className="h-fit">
-          <CardHeader title="Fila de perícia" subtitle={`${fila.length} carga(s) aguardando`} icon={<Microscope size={18} />} />
-          <div className="divide-y divide-zinc-800/70">
-            {fila.length === 0 && <EmptyState icon={<FlaskConical size={20} />} title="Nenhuma carga retida" text="Cargas com fardos ≥ 20% aparecerão aqui." />}
-            {fila.map((r) => {
-              const criticos = r.fardos.filter((f) => analisarFardo(f, r.items.find((i) => i.id === f.produtoId)).critico).length;
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => setSelId(r.id)}
-                  className={cx('block w-full border-l-2 px-4 py-3 text-left', sel?.id === r.id ? 'border-l-rose-400 bg-rose-500/10' : 'border-l-transparent hover:bg-zinc-800/40')}
-                >
-                  <div className="text-sm font-semibold text-zinc-100">{r.fornecedor}</div>
-                  <div className="font-mono text-[11px] text-zinc-500">
-                    NF {r.nf} · {r.codigoContainer || 'sem container'}
-                  </div>
-                  <div className="mt-1 flex items-center justify-between text-[11px]">
-                    <span className="text-red-300">{criticos} fardo(s) crítico(s)</span>
-                    <span className="text-zinc-500">{fmtData(r.dataEnvioLogistica)}</span>
-                  </div>
-                </button>
-              );
-            })}
+        <div className="flex h-fit flex-col gap-2 rounded-3xl bg-canvas p-3">
+          <div className="flex items-center gap-2.5 px-1.5 pt-1">
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-600" />
+            <h2 className="flex-1 font-display text-[15px] font-bold text-ink">Fila de perícia</h2>
+            <span className="font-mono text-sm text-muted">{fila.length}</span>
           </div>
-        </Card>
+          {fila.length === 0 && <EmptyState art={<ContainerArt p={ART.slate} width={90} />} title="Nenhuma carga retida" text="Cargas com fardos ≥ 20% aparecem aqui." />}
+          {fila.map((r) => {
+            const criticos = r.fardos.filter((f) => analisarFardo(f, r.items.find((i) => i.id === f.produtoId)).critico).length;
+            return (
+              <QueueItem
+                key={r.id}
+                active={sel?.id === r.id}
+                tone="rose"
+                art={<ContainerArt p={ART.rose} width={40} />}
+                title={r.fornecedor}
+                aside={<span className="rounded-md bg-rose-700 px-1.5 py-0.5 font-mono text-[10px] text-white">{fmtPct(maiorSeveridade(r))}</span>}
+                lines={[`NF ${r.nf} · ${criticos} fardo(s) crítico(s)`, `Recebida ${fmtData(r.dataEnvioLogistica)}`]}
+                onClick={() => setSelId(r.id)}
+              />
+            );
+          })}
+        </div>
         {sel ? (
           <Pericia key={sel.id} romaneio={sel} store={store} />
         ) : (
@@ -104,53 +109,59 @@ function Pericia({ romaneio, store }: { romaneio: Romaneio; store: ModuleProps['
 
   return (
     <div className="space-y-4">
-      <Card>
-        <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-zinc-50">
-                {romaneio.fornecedor} <span className="font-mono text-base text-zinc-400">· NF {romaneio.nf}</span>
-              </h2>
+      <Card className="overflow-hidden">
+        <div className="flex flex-col gap-5 p-5 md:flex-row md:items-center">
+          <div className="relative grid h-32 shrink-0 place-items-center rounded-2xl md:w-56" style={{ background: ART.rose.bg }}>
+            <ContainerArt p={ART.rose} width={170} />
+            <span className="absolute right-2.5 top-2.5 rounded-lg bg-rose-700 px-2 py-0.5 font-mono text-xs text-white">{fmtPct(maiorSeveridade(romaneio))}</span>
+          </div>
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-display text-2xl font-bold text-ink">{romaneio.fornecedor}</h2>
+              <span className="font-mono text-sm text-muted">NF {romaneio.nf}</span>
               <StatusBadge status={romaneio.status} />
             </div>
-            <div className="font-mono text-xs text-zinc-500">
-              {romaneio.id} · Container {romaneio.codigoContainer || '—'} · Conferente {romaneio.conferenteLogistica || '—'}
+            <div className="font-mono text-xs text-muted">
+              {romaneio.codigoContainer || 'Carga solta'} · Conferente {romaneio.conferenteLogistica || '—'} · {romaneio.id}
             </div>
+            <div className="max-w-md">
+              <Meter value={maiorSeveridade(romaneio)} />
+            </div>
+            {romaneio.aprovacaoAdmin?.decisao === 'Devolvido' && (
+              <div className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <b>Devolvida pelo Admin para reinspeção:</b> {romaneio.aprovacaoAdmin.observacao || 'sem observação.'}
+              </div>
+            )}
           </div>
-          {romaneio.aprovacaoAdmin?.decisao === 'Devolvido' && (
-            <div className="max-w-sm rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-              <b>Devolvida pelo Admin para reinspeção:</b> {romaneio.aprovacaoAdmin.observacao || 'sem observação.'}
-            </div>
-          )}
         </div>
       </Card>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Metric icon={<Sigma size={16} />} label="Divergência média em peças" value={fmtPct(mediaPecas)} tone={mediaPecas >= LIMITE_SEVERIDADE ? 'text-red-300' : 'text-amber-300'} />
-        <Metric icon={<Ruler size={16} />} label="Divergência média em volume (m³)" value={fmtPct(mediaM3)} tone={mediaM3 >= LIMITE_SEVERIDADE ? 'text-red-300' : 'text-amber-300'} />
+        <Metric icon={<Sigma size={20} />} label="Divergência média em peças" value={fmtPct(mediaPecas)} tone={mediaPecas >= LIMITE_SEVERIDADE ? 'text-red-700' : 'text-amber-700'} />
+        <Metric icon={<Ruler size={20} />} label="Divergência média em volume (m³)" value={fmtPct(mediaM3)} tone={mediaM3 >= LIMITE_SEVERIDADE ? 'text-red-700' : 'text-amber-700'} />
         <Metric
-          icon={<FlaskConical size={16} />}
+          icon={<FlaskConical size={20} />}
           label="Impacto volumétrico total"
           value={`${impacto > 0 ? '+' : ''}${fmtNum(impacto, 4)} m³`}
-          tone={impacto < 0 ? 'text-red-300' : impacto > 0 ? 'text-emerald-300' : 'text-zinc-300'}
+          tone={impacto < 0 ? 'text-red-700' : impacto > 0 ? 'text-emerald-700' : 'text-ink-soft'}
         />
       </div>
 
       <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
           <div>
-            <h3 className="text-sm font-semibold text-zinc-100">Reinspeção milimétrica fardo a fardo</h3>
-            <p className="text-xs text-zinc-500">Ajuste recontagem, amostra e variações (E/L/C) e decida cada fardo.</p>
+            <h3 className="font-display text-[15px] font-bold text-ink">Reinspeção milimétrica fardo a fardo</h3>
+            <p className="text-xs text-muted">Ajuste recontagem, amostra e variações (E/L/C) e decida cada fardo.</p>
           </div>
-          <label className="flex items-center gap-2 text-xs text-zinc-400">
-            <input type="checkbox" checked={somenteRetidos} onChange={(e) => setSomenteRetidos(e.target.checked)} className="accent-rose-500" />
+          <label className="flex items-center gap-2 text-xs text-muted">
+            <input type="checkbox" checked={somenteRetidos} onChange={(e) => setSomenteRetidos(e.target.checked)} className="h-4 w-4 accent-rose-600" />
             Somente fardos retidos (≥ {LIMITE_SEVERIDADE}%)
           </label>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1080px] text-xs">
+          <table className="w-full min-w-[1180px] text-xs">
             <thead>
-              <tr className="border-b border-zinc-800 text-left text-[10px] uppercase tracking-wider text-zinc-500">
+              <tr className="border-b border-line bg-canvas/70 text-left text-[11px] font-bold uppercase tracking-wide text-muted">
                 <th className="px-3 py-2.5">Fardo</th>
                 <th className="px-2 py-2.5">Produto</th>
                 <th className="px-2 py-2.5 text-right">Recontagem</th>
@@ -164,7 +175,7 @@ function Pericia({ romaneio, store }: { romaneio: Romaneio; store: ModuleProps['
                 <th className="px-3 py-2.5">Motivo</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/70">
+            <tbody className="divide-y divide-line">
               {visiveis.map(({ f, a }) => {
                 const item = itemMap.get(f.produtoId);
                 const num = (k: keyof FardoRecebido, inteiro = false) => (
@@ -181,14 +192,14 @@ function Pericia({ romaneio, store }: { romaneio: Romaneio; store: ModuleProps['
                   </td>
                 );
                 return (
-                  <tr key={f.id} className={cx(a.critico && 'bg-red-500/5')}>
-                    <td className="px-3 py-2 font-mono font-bold text-zinc-200">
+                  <tr key={f.id} className={cx(a.critico && 'bg-rose-50/60')}>
+                    <td className="px-3 py-2 font-mono font-bold text-ink">
                       #{f.numeroFardo}
-                      {originais.get(f.id) && <div className="text-[9px] font-semibold text-red-400">RETIDO</div>}
+                      {originais.get(f.id) && <div className="text-[9px] font-semibold text-rose-700">RETIDO</div>}
                     </td>
-                    <td className="px-2 py-2 text-zinc-300">
+                    <td className="px-2 py-2 text-ink-soft">
                       {item?.produto}
-                      <div className="font-mono text-[10px] text-zinc-500">
+                      <div className="font-mono text-[10px] text-muted">
                         {item?.espessura}×{item?.largura}×{item?.comprimento} mm
                       </div>
                     </td>
@@ -199,35 +210,34 @@ function Pericia({ romaneio, store }: { romaneio: Romaneio; store: ModuleProps['
                     {num('v_largura')}
                     {num('v_comprimento')}
                     <td className="px-2 py-2 text-right font-mono">
-                      <div className={cx('font-bold', a.pctPecas >= LIMITE_SEVERIDADE ? 'text-red-400' : 'text-zinc-300')}>{fmtPct(a.pctPecas)}</div>
-                      <div className={cx(a.pctM3 >= LIMITE_SEVERIDADE ? 'text-red-400' : 'text-zinc-500')}>{fmtPct(a.pctM3)}</div>
+                      <div className={cx('font-bold', a.pctPecas >= LIMITE_SEVERIDADE ? 'text-rose-700' : 'text-ink-soft')}>{fmtPct(a.pctPecas)}</div>
+                      <div className={cx(a.pctM3 >= LIMITE_SEVERIDADE ? 'text-rose-700' : 'text-muted')}>{fmtPct(a.pctM3)}</div>
                     </td>
                     <td className="px-2 py-2">
-                      <select
-                        className={cx(
-                          inputCls,
-                          'py-1.5 text-xs',
-                          f.status === 'Liberado' && 'border-emerald-600/60 text-emerald-300',
-                          f.status === 'Divergente confirmado' && 'border-orange-600/60 text-orange-300',
-                          f.status === 'Reprovado' && 'border-red-600/70 text-red-300',
-                        )}
-                        value={f.status}
-                        onChange={(e) => upd(f.id, { status: e.target.value as FardoRecebido['status'] })}
-                      >
-                        <option value="Liberado">Liberado</option>
-                        <option value="Divergente confirmado">Divergente confirmado</option>
-                        <option value="Reprovado">Reprovado</option>
-                      </select>
+                      <div className="flex gap-1" role="group" aria-label={`Decisão do fardo ${f.numeroFardo}`}>
+                        {DEC_FARDO.map((d) => (
+                          <button
+                            key={d.value}
+                            title={d.value}
+                            aria-pressed={f.status === d.value}
+                            onClick={() => upd(f.id, { status: d.value })}
+                            className={cx('flex h-9 items-center gap-1 rounded-lg px-2 text-[11px] font-bold transition', f.status === d.value ? d.on : 'bg-canvas text-muted hover:text-ink')}
+                          >
+                            {d.icon}
+                            {d.label}
+                          </button>
+                        ))}
+                      </div>
                     </td>
                     <td className="px-3 py-2">
-                      <input className={cx(inputCls, 'min-w-[150px] py-1.5 text-xs')} defaultValue={f.motivoDivergencia ?? ''} onChange={(e) => upd(f.id, { motivoDivergencia: e.target.value })} placeholder="Ex: espessura média 22 mm" />
+                      <input className={cx(selectSmCls, 'min-w-[150px]')} defaultValue={f.motivoDivergencia ?? ''} onChange={(e) => upd(f.id, { motivoDivergencia: e.target.value })} placeholder="Ex: espessura média 22 mm" />
                     </td>
                   </tr>
                 );
               })}
               {visiveis.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-zinc-500">
+                  <td colSpan={11} className="px-4 py-8 text-center text-muted">
                     Nenhum fardo para exibir.
                   </td>
                 </tr>
@@ -254,7 +264,7 @@ function Pericia({ romaneio, store }: { romaneio: Romaneio; store: ModuleProps['
             </select>
           </Field>
           <Field label="Parecer técnico circunstanciado" className="md:col-span-2">
-            <textarea rows={4} className={inputCls} value={parecer} onChange={(e) => setParecer(e.target.value)} placeholder="Descreva o método, as medições e a conclusão técnica…" />
+            <textarea rows={4} className={textareaCls} value={parecer} onChange={(e) => setParecer(e.target.value)} placeholder="Descreva o método, as medições e a conclusão técnica…" />
           </Field>
           <Field label="Observações técnicas (instrumentos, calibração, lote)" className="md:col-span-2">
             <input className={inputCls} value={obsTec} onChange={(e) => setObsTec(e.target.value)} />
@@ -262,9 +272,12 @@ function Pericia({ romaneio, store }: { romaneio: Romaneio; store: ModuleProps['
         </div>
       </Card>
 
-      <div className="flex justify-end">
+      <div className="sticky bottom-3 z-10 flex flex-col gap-3 rounded-2xl border border-line bg-white/95 p-3 pl-5 shadow-lift backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-[13px] text-ink-soft">
+          Decisão do laudo: <b className="text-ink">{decisaoFinal}</b>
+        </div>
         <Button size="lg" onClick={enviar} className="w-full sm:w-auto">
-          <Send size={16} /> Transmitir Laudo e Enviar para Aprovação do Administrador
+          <Send size={17} /> Transmitir laudo e enviar ao Administrador
         </Button>
       </div>
     </div>
@@ -273,12 +286,12 @@ function Pericia({ romaneio, store }: { romaneio: Romaneio; store: ModuleProps['
 
 function Metric({ icon, label, value, tone }: { icon: ReactNode; label: string; value: string; tone: string }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4">
-      <div className="flex items-center gap-2 text-xs text-zinc-400">
-        {icon}
-        {label}
+    <div className="flex items-center gap-3 rounded-2xl border border-line bg-white p-4 shadow-card">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-rose-50 text-rose-700">{icon}</span>
+      <div>
+        <div className={cx('font-display text-2xl font-bold tabular-nums', tone)}>{value}</div>
+        <div className="text-xs font-semibold text-muted">{label}</div>
       </div>
-      <div className={cx('mt-2 font-mono text-2xl font-bold', tone)}>{value}</div>
     </div>
   );
 }

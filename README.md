@@ -2,7 +2,7 @@
 
 Sistema de Gestão de Romaneios, Fichas Cegas, Qualidade Industrial e Aprovação Executiva para o recebimento de madeira.
 
-SPA em **React 18 + TypeScript + Tailwind CSS**, com ícones **Lucide React** e gráficos **Recharts**. Tema Dark Mode Industrial com cores por perfil: bordô `#8b1a1a` (Admin), verde-água (Logística) e carmim (Qualidade).
+SPA em **React 18 + TypeScript + Tailwind CSS**, com ícones **Lucide React** e gráficos **Recharts**. Visual claro "Fluxo Visual": fundo branco, cargas em colunas por etapa, ilustrações vetoriais de caminhão, container e fardos (`src/components/Art.tsx`) e cores por etapa: verde-água (pátio), carmim (qualidade), âmbar (decisão) e verde (estoque), com o bordô `#8b1a1a` da marca. Fontes: Sora, DM Sans e DM Mono.
 
 ## Como rodar
 

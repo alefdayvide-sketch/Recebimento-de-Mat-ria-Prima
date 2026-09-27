@@ -1,5 +1,6 @@
 import { ArrowUpRight, FolderSearch, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { artDoStatus, ContainerArt, TruckArt } from '../components/Art';
 import { Card, cx, EmptyState, inputCls, PageHeader, StatusBadge } from '../components/ui';
 import { maiorSeveridade, totaisRomaneio } from '../lib/calc';
 import { fmtData, fmtM3, fmtNum, fmtPct } from '../lib/format';
@@ -40,11 +41,11 @@ export function Consulta({ store, nav }: ModuleProps) {
 
   return (
     <div>
-      <PageHeader title="Consulta Avançada & Histórico" subtitle="Pesquisa global em todos os romaneios, fichas cegas e laudos." />
-      <Card className="mb-6">
-        <div className="flex flex-wrap items-center gap-3 p-4">
+      <PageHeader eyebrow="Histórico" title="Consulta" subtitle="Pesquise em todos os romaneios, fichas cegas e laudos." />
+      <div className="mb-6 rounded-3xl bg-canvas p-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[240px] flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input className={cx(inputCls, 'pl-9')} placeholder="NF, fornecedor, container, produto, conferente, auditor…" value={busca} onChange={(e) => setBusca(e.target.value)} />
           </div>
           <div className="flex flex-wrap gap-1">
@@ -52,14 +53,14 @@ export function Consulta({ store, nav }: ModuleProps) {
               <button
                 key={s}
                 onClick={() => setStatus(s)}
-                className={cx('rounded-full border px-3 py-1.5 text-xs font-medium', status === s ? 'border-zinc-400 bg-zinc-800 text-white' : 'border-zinc-800 text-zinc-400 hover:text-zinc-200')}
+                className={cx('h-9 rounded-full px-3.5 text-xs font-bold', status === s ? 'bg-ink text-white' : 'bg-white text-muted hover:text-ink')}
               >
-                {s}
+                {s === 'Todos' ? 'Todos' : s === 'Aguardando Caminhão' ? 'Aguardando caminhão' : s === 'Ag. Qualidade' ? 'Na Qualidade' : s === 'Ag. Aprovação Admin' ? 'Decisão do Admin' : 'No estoque'}
               </button>
             ))}
           </div>
         </div>
-      </Card>
+      </div>
 
       {lista.length === 0 ? (
         <Card>
@@ -72,10 +73,13 @@ export function Consulta({ store, nav }: ModuleProps) {
             const sev = maiorSeveridade(r);
             return (
               <Card key={r.id} className="flex flex-col">
-                <div className="flex items-start justify-between gap-2 px-4 pt-4">
-                  <div>
-                    <div className="text-base font-bold text-zinc-50">{r.fornecedor}</div>
-                    <div className="font-mono text-[11px] text-zinc-500">{r.id}</div>
+                <div className="m-3 mb-0 flex h-24 items-end justify-center overflow-hidden rounded-xl" style={{ background: artDoStatus(r.status).bg }}>
+                  {r.status === 'Aguardando Caminhão' ? <TruckArt p={artDoStatus(r.status)} width={210} /> : <ContainerArt p={artDoStatus(r.status)} width={130} className="mb-2" />}
+                </div>
+                <div className="flex items-start justify-between gap-2 px-4 pt-3">
+                  <div className="min-w-0">
+                    <div className="font-display text-base font-bold text-ink">{r.fornecedor}</div>
+                    <div className="truncate font-mono text-[11px] text-muted">{r.id}</div>
                   </div>
                   <StatusBadge status={r.status} />
                 </div>
@@ -89,10 +93,10 @@ export function Consulta({ store, nav }: ModuleProps) {
                   <Info k="Peças NF / recebidas" v={`${fmtNum(t.pecasRomaneio)} / ${t.conferido ? fmtNum(t.pecasRecebidas) : '—'}`} />
                   <Info k="Laudo" v={r.laudoQualidade?.decisao ?? '—'} />
                 </dl>
-                <div className="mt-auto flex flex-wrap gap-1.5 border-t border-zinc-800 px-4 py-3">
+                <div className="mt-auto flex flex-wrap gap-1.5 border-t border-line px-4 py-3">
                   {r.departamentoOrigem && <Tag>{`via ${r.departamentoOrigem}`}</Tag>}
                   {r.aprovacaoAdmin && <Tag>{`Admin: ${r.aprovacaoAdmin.decisao}`}</Tag>}
-                  <button onClick={() => abrirDossie(r)} className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-zinc-200 hover:text-white">
+                  <button onClick={() => abrirDossie(r)} className="ml-auto inline-flex h-9 items-center gap-1 rounded-lg bg-ink px-3 text-xs font-bold text-white hover:bg-black">
                     Abrir dossiê <ArrowUpRight size={14} />
                   </button>
                 </div>
@@ -109,12 +113,13 @@ export function Consulta({ store, nav }: ModuleProps) {
 function Info({ k, v }: { k: string; v: string }) {
   return (
     <div>
-      <dt className="text-[10px] uppercase tracking-wider text-zinc-500">{k}</dt>
-      <dd className="font-mono text-zinc-200">{v}</dd>
+      <dt className="text-[11px] font-bold text-muted">{k}</dt>
+      <dd className="font-mono text-ink">{v}</dd>
     </div>
   );
 }
 
 function Tag({ children }: { children: string }) {
-  return <span className="rounded border border-zinc-800 bg-zinc-950 px-2 py-0.5 text-[10px] text-zinc-400">{children}</span>;
+  return <span className="rounded-lg bg-canvas px-2 py-1 text-[11px] font-semibold text-muted">{children}</span>;
 }
+

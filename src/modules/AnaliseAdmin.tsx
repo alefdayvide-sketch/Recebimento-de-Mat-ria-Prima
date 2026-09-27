@@ -1,7 +1,8 @@
 import { CheckCircle2, FileText, FlaskConical, Gavel, Mail, Microscope, PackageCheck, RotateCcw, Truck } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ComparativoTable } from '../components/ComparativoTable';
-import { Badge, Button, Card, CardHeader, cx, EmptyState, Field, inputCls, PageHeader, StatusBadge, Tabs, useToast } from '../components/ui';
+import { ART, ContainerArt } from '../components/Art';
+import { ActionButton, Badge, Card, CardHeader, cx, EmptyState, Field, PageHeader, QueueItem, StatusBadge, Tabs, textareaCls, useToast } from '../components/ui';
 import { analisarFardo, LIMITE_SEVERIDADE, maiorSeveridade, totaisRomaneio } from '../lib/calc';
 import { fmtData, fmtM3, fmtNum, fmtPct } from '../lib/format';
 import type { Romaneio } from '../types';
@@ -19,50 +20,45 @@ export function AnaliseAdmin({ store, nav }: ModuleProps) {
 
   return (
     <div>
-      <PageHeader title="Análise Admin · Aprovação Executiva" subtitle="Deliberação final das cargas conferidas pela Logística ou periciadas pela Qualidade." />
+      <PageHeader eyebrow="Administrador" title="Decisão executiva" subtitle="Aprove ou devolva as cargas conferidas pela Logística ou periciadas pela Qualidade." />
       <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
-        <Card className="h-fit">
-          <div className="border-b border-zinc-800 p-4">
-            <Tabs
-              value={origem}
-              onChange={(v) => {
-                setOrigem(v);
-                setSelId(undefined);
-              }}
-              options={[
-                { value: 'todas', label: `Todas (${pendentes.length})` },
-                { value: 'logistica', label: `Direto da Logística (< ${LIMITE_SEVERIDADE}%)` },
-                { value: 'qualidade', label: `Via Qualidade (≥ ${LIMITE_SEVERIDADE}%)` },
-              ]}
+        <div className="flex h-fit flex-col gap-2 rounded-3xl bg-canvas p-3">
+          <Tabs
+            value={origem}
+            onChange={(v) => {
+              setOrigem(v);
+              setSelId(undefined);
+            }}
+            options={[
+              { value: 'todas', label: `Todas · ${pendentes.length}` },
+              { value: 'logistica', label: `Direto (< ${LIMITE_SEVERIDADE}%)` },
+              { value: 'qualidade', label: `Com laudo (≥ ${LIMITE_SEVERIDADE}%)` },
+            ]}
+          />
+          {fila.length === 0 && <EmptyState art={<ContainerArt p={ART.slate} width={90} />} title="Nenhum dossiê pendente" text="Cargas aguardando aprovação aparecem aqui." />}
+          {fila.map((r) => (
+            <QueueItem
+              key={r.id}
+              active={sel?.id === r.id}
+              tone="amber"
+              art={<ContainerArt p={ART.amber} width={40} />}
+              title={r.fornecedor}
+              aside={
+                r.departamentoOrigem === 'Qualidade' ? (
+                  <Badge className="bg-rose-50 text-rose-700">
+                    <Microscope size={11} /> Laudo
+                  </Badge>
+                ) : (
+                  <Badge className="bg-teal-50 text-teal-800">
+                    <Truck size={11} /> Direto
+                  </Badge>
+                )
+              }
+              lines={[`NF ${r.nf} · maior diverg. ${fmtPct(maiorSeveridade(r))}`]}
+              onClick={() => setSelId(r.id)}
             />
-          </div>
-          <div className="divide-y divide-zinc-800/70">
-            {fila.length === 0 && <EmptyState icon={<Gavel size={20} />} title="Nenhum dossiê pendente" text="Cargas aguardando aprovação aparecerão aqui." />}
-            {fila.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => setSelId(r.id)}
-                className={cx('block w-full border-l-2 px-4 py-3 text-left', sel?.id === r.id ? 'border-l-vinho-400 bg-vinho/15' : 'border-l-transparent hover:bg-zinc-800/40')}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold text-zinc-100">{r.fornecedor}</span>
-                  {r.departamentoOrigem === 'Qualidade' ? (
-                    <Badge className="border-rose-500/40 bg-rose-500/10 text-rose-300">
-                      <Microscope size={11} /> Qualidade
-                    </Badge>
-                  ) : (
-                    <Badge className="border-teal-500/40 bg-teal-500/10 text-teal-300">
-                      <Truck size={11} /> Logística
-                    </Badge>
-                  )}
-                </div>
-                <div className="mt-1 font-mono text-[11px] text-zinc-500">
-                  NF {r.nf} · maior diverg. {fmtPct(maiorSeveridade(r))}
-                </div>
-              </button>
-            ))}
-          </div>
-        </Card>
+          ))}
+        </div>
 
         {sel ? (
           <Dossie key={sel.id} romaneio={sel} store={store} />
@@ -95,25 +91,25 @@ function Dossie({ romaneio, store }: { romaneio: Romaneio; store: ModuleProps['s
 
   return (
     <div className="space-y-4">
-      <Card>
-        <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Dossiê de recebimento</div>
-            <h2 className="text-xl font-bold text-zinc-50">
-              {romaneio.fornecedor} <span className="font-mono text-lg text-zinc-400">· NF {romaneio.nf}</span>
-            </h2>
-            <div className="font-mono text-xs text-zinc-500">
-              {romaneio.id} · Container {romaneio.codigoContainer || '—'} · Recebido {fmtData(romaneio.dataChegada)} · Conferente {romaneio.conferenteLogistica || '—'}
+      <Card className="overflow-hidden">
+        <div className="flex flex-col gap-5 p-5 md:flex-row md:items-center">
+          <div className="grid h-28 shrink-0 place-items-center rounded-2xl md:w-48" style={{ background: ART.amber.bg }}>
+            <ContainerArt p={ART.amber} width={150} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium text-muted">Dossiê de recebimento</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-display text-2xl font-bold text-ink">{romaneio.fornecedor}</h2>
+              <span className="font-mono text-sm text-muted">NF {romaneio.nf}</span>
+              <StatusBadge status={romaneio.status} />
+            </div>
+            <div className="mt-1 font-mono text-xs text-muted">
+              {romaneio.codigoContainer || 'Carga solta'} · Recebido {fmtData(romaneio.dataChegada)} · Conferente {romaneio.conferenteLogistica || '—'}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <StatusBadge status={romaneio.status} />
-            <Button size="sm" variant="outline" onClick={() => setEmailOpen(true)}>
-              <Mail size={14} /> Comparativo p/ fornecedor
-            </Button>
-          </div>
+          <ActionButton tone="light" icon={<Mail size={19} />} title="E-mail ao fornecedor" subtitle="Comparativo pronto" onClick={() => setEmailOpen(true)} />
         </div>
-        <div className="grid grid-cols-2 gap-3 border-t border-zinc-800 px-5 py-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 border-t border-line px-5 py-4 lg:grid-cols-4">
           <Stat label="Peças nominais" value={fmtNum(t.pecasRomaneio)} />
           <Stat label="Peças físicas" value={fmtNum(t.pecasRecebidas)} delta={t.pecasRecebidas - t.pecasRomaneio} />
           <Stat label="m³ original (NF)" value={fmtM3(t.m3Fornecedor)} />
@@ -133,24 +129,24 @@ function Dossie({ romaneio, store }: { romaneio: Romaneio; store: ModuleProps['s
             {laudo ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-semibold text-zinc-100">{laudo.auditor}</span>
+                  <span className="font-semibold text-ink">{laudo.auditor}</span>
                   <StatusBadge status={laudo.decisao} />
                 </div>
-                <p className="whitespace-pre-wrap text-zinc-300">{laudo.parecer}</p>
-                {laudo.observacaoTecnica && <p className="text-xs text-zinc-500">Obs. técnica: {laudo.observacaoTecnica}</p>}
-                <p className="text-xs text-zinc-500">Emitido em {fmtData(laudo.data)}</p>
+                <p className="whitespace-pre-wrap text-ink-soft">{laudo.parecer}</p>
+                {laudo.observacaoTecnica && <p className="text-xs text-muted">Obs. técnica: {laudo.observacaoTecnica}</p>}
+                <p className="text-xs text-muted">Emitido em {fmtData(laudo.data)}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {romaneio.fardos
                     .filter((f) => f.reinspecionadoQualidade)
                     .map((f) => (
-                      <span key={f.id} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-[11px] text-zinc-300">
-                        #{f.numeroFardo} · <span className={f.status === 'Liberado' ? 'text-emerald-400' : f.status === 'Reprovado' ? 'text-red-400' : 'text-orange-300'}>{f.status}</span>
+                      <span key={f.id} className="rounded-lg bg-canvas px-2 py-1 font-mono text-[11px] text-ink-soft">
+                        #{f.numeroFardo} · <span className={f.status === 'Liberado' ? 'text-emerald-700' : f.status === 'Reprovado' ? 'text-rose-700' : 'text-orange-700'}>{f.status}</span>
                       </span>
                     ))}
                 </div>
               </div>
             ) : (
-              <p className="text-zinc-500">Carga enviada direto pela Logística: todos os fardos abaixo de {LIMITE_SEVERIDADE}%. Sem perícia técnica.</p>
+              <p className="text-muted">Carga enviada direto pela Logística: todos os fardos abaixo de {LIMITE_SEVERIDADE}%. Sem perícia técnica.</p>
             )}
           </div>
         </Card>
@@ -158,20 +154,20 @@ function Dossie({ romaneio, store }: { romaneio: Romaneio; store: ModuleProps['s
         <Card>
           <CardHeader title="Observações da Logística" icon={<Truck size={18} />} />
           <div className="space-y-2 p-5 text-sm">
-            {obsLogistica.length === 0 && <p className="text-zinc-500">Nenhuma observação registrada nos fardos.</p>}
+            {obsLogistica.length === 0 && <p className="text-muted">Nenhuma observação registrada nos fardos.</p>}
             {obsLogistica.map((f) => {
               const a = analisarFardo(f, romaneio.items.find((i) => i.id === f.produtoId));
               return (
-                <div key={f.id} className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-                  <div className="flex justify-between font-mono text-[11px] text-zinc-500">
+                <div key={f.id} className="rounded-lg border border-line bg-canvas px-3 py-2">
+                  <div className="flex justify-between font-mono text-[11px] text-muted">
                     <span>Fardo #{f.numeroFardo}</span>
-                    <span className={a.critico ? 'text-red-400' : 'text-amber-300'}>{fmtPct(a.severidade)}</span>
+                    <span className={a.critico ? 'text-rose-700' : 'text-amber-700'}>{fmtPct(a.severidade)}</span>
                   </div>
-                  <div className="text-zinc-300">{f.observacao}</div>
+                  <div className="text-ink-soft">{f.observacao}</div>
                 </div>
               );
             })}
-            {romaneio.observacao && <p className="text-xs text-zinc-500">Obs. do romaneio: {romaneio.observacao}</p>}
+            {romaneio.observacao && <p className="text-xs text-muted">Obs. do romaneio: {romaneio.observacao}</p>}
           </div>
         </Card>
       </div>
@@ -180,18 +176,12 @@ function Dossie({ romaneio, store }: { romaneio: Romaneio; store: ModuleProps['s
         <CardHeader title="Deliberação do Administrador" icon={<Gavel size={18} />} />
         <div className="space-y-4 p-5">
           <Field label="Notas do Administrador" hint="Obrigatório para devoluções.">
-            <textarea rows={3} className={inputCls} value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Justificativa da decisão, orientações para recontagem ou reinspeção…" />
+            <textarea rows={3} className={textareaCls} value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Justificativa da decisão, orientações para recontagem ou reinspeção…" />
           </Field>
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => agir('devolverLogistica')}>
-              <RotateCcw size={15} /> Devolver para Logística (Recontagem)
-            </Button>
-            <Button variant="warning" onClick={() => agir('devolverQualidade')}>
-              <Microscope size={15} /> Devolver para Qualidade (Reinspeção)
-            </Button>
-            <Button variant="success" onClick={() => agir('aprovar')}>
-              <PackageCheck size={15} /> Aprovar Entrada e Liberar para Estoque
-            </Button>
+          <div className="grid gap-3 md:grid-cols-3">
+            <DecisaoTile tone="teal" icon={<RotateCcw size={20} />} title="Devolver à Logística" text="Recontagem no pátio" onClick={() => agir('devolverLogistica')} />
+            <DecisaoTile tone="rose" icon={<Microscope size={20} />} title="Devolver à Qualidade" text="Nova reinspeção técnica" onClick={() => agir('devolverQualidade')} />
+            <DecisaoTile tone="emerald" solid icon={<PackageCheck size={20} />} title="Aprovar entrada" text="Liberar para o estoque" onClick={() => agir('aprovar')} />
           </div>
         </div>
       </Card>
@@ -203,15 +193,34 @@ function Dossie({ romaneio, store }: { romaneio: Romaneio; store: ModuleProps['s
 
 function Stat({ label, value, delta, casas = 0 }: { label: string; value: string; delta?: number; casas?: number }) {
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
-      <div className="font-mono text-lg font-bold text-zinc-100">{value}</div>
+    <div className="rounded-xl bg-canvas px-3.5 py-3">
+      <div className="text-xs font-bold text-muted">{label}</div>
+      <div className="font-display text-xl font-bold tabular-nums text-ink">{value}</div>
       {delta !== undefined && (
-        <div className={cx('font-mono text-xs', delta < -0.0005 ? 'text-red-400' : delta > 0.0005 ? 'text-emerald-400' : 'text-zinc-500')}>
+        <div className={cx('font-mono text-xs', delta < -0.0005 ? 'text-rose-700' : delta > 0.0005 ? 'text-emerald-700' : 'text-muted')}>
           {delta > 0.0005 ? '+' : ''}
           {fmtNum(delta, casas)}
         </div>
       )}
     </div>
+  );
+}
+
+function DecisaoTile({ tone, icon, title, text, onClick, solid }: { tone: 'teal' | 'rose' | 'emerald'; icon: ReactNode; title: string; text: string; onClick: () => void; solid?: boolean }) {
+  const tile = { teal: 'bg-teal-50 text-teal-700', rose: 'bg-rose-50 text-rose-700', emerald: 'bg-emerald-50 text-emerald-700' }[tone];
+  return (
+    <button
+      onClick={onClick}
+      className={cx(
+        'flex items-center gap-3 rounded-2xl p-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
+        solid ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'border border-line bg-white text-ink hover:bg-canvas',
+      )}
+    >
+      <span className={cx('grid h-11 w-11 shrink-0 place-items-center rounded-xl', solid ? 'bg-white/15 text-white' : tile)}>{icon}</span>
+      <span>
+        <span className="block text-sm font-bold">{title}</span>
+        <span className={cx('block text-xs', solid ? 'text-emerald-100' : 'text-muted')}>{text}</span>
+      </span>
+    </button>
   );
 }
